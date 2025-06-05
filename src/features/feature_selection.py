@@ -5,40 +5,62 @@ Module for feature selection and importance analysis using SHAP.
 import numpy as np
 import pandas as pd
 import shap
-from typing import List, Dict, Any, Optional, Tuple
+from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
 import seaborn as sns
+from typing import Any
+from src.utils.constants import LOGISTIC_REGRESSION_PARAMS
 
 class FeatureImportanceAnalyzer:
     """
     Class for analyzing feature importance using SHAP values.
+    Supports various model types including linear models and tree-based models.
     """
     
     def __init__(
         self,
-        model: Optional[LogisticRegression] = None,
-        random_state: int = 42,
-        max_iter: int = 1000,
-        class_weight: str = 'balanced'
+        model: BaseEstimator | None = None,
+        model_type: str = 'logistic_regression',
+        model_params: dict[str, Any] | None = None,
+        random_state: int = 42
     ):
         """
         Initialize the feature importance analyzer.
         
         Args:
-            model (Optional[LogisticRegression]): Logistic regression model
+            model (BaseEstimator | None): Pre-initialized model instance
+            model_type (str): Type of model to use ('logistic_regression', 'random_forest', etc.)
+            model_params (Dict[str, Any] | None): Parameters for model initialization
             random_state (int): Random state for reproducibility
-            max_iter (int): Maximum number of iterations for logistic regression
-            class_weight (str): Class weight strategy
         """
-        self.model = model or LogisticRegression(
-            random_state=random_state,
-            max_iter=max_iter,
-            class_weight=class_weight
-        )
+        self.model_type = model_type
+        self.model_params = model_params or {}
+        self.random_state = random_state
+        
+        if model is not None:
+            self.model = model
+        else:
+            self.model = self._initialize_model()
+            
         self.explainer = None
         self.shap_values = None
         self.feature_names = None
+        
+    def _initialize_model(self) -> BaseEstimator:
+        """
+        Initialize model based on model_type and parameters.
+        
+        Returns:
+            BaseEstimator: Initialized model
+        """
+        if self.model_type == 'logistic_regression':
+            params = LOGISTIC_REGRESSION_PARAMS.copy()
+            params.update(self.model_params)
+            params['random_state'] = self.random_state
+            return LogisticRegression(**params)
+        else:
+            raise ValueError(f"Unsupported model type: {self.model_type}")
         
     def fit(self, X: pd.DataFrame, y: pd.Series) -> 'FeatureImportanceAnalyzer':
         """
@@ -54,8 +76,13 @@ class FeatureImportanceAnalyzer:
         self.model.fit(X, y)
         self.feature_names = X.columns.tolist()
         
-        # Initialize SHAP explainer
-        self.explainer = shap.LinearExplainer(self.model, X)
+        # Initialize appropriate SHAP explainer based on model type
+        if self.model_type == 'logistic_regression':
+            self.explainer = shap.LinearExplainer(self.model, X)
+        else:
+            # For tree-based models
+            self.explainer = shap.TreeExplainer(self.model)
+            
         self.shap_values = self.explainer.shap_values(X)
         
         return self
@@ -79,14 +106,14 @@ class FeatureImportanceAnalyzer:
     def plot_dependence(
         self,
         feature: str,
-        interaction_index: Optional[str] = None
+        interaction_index: str | None = None
     ) -> None:
         """
         Plot SHAP dependence plot for a specific feature.
         
         Args:
             feature (str): Feature name to plot
-            interaction_index (Optional[str]): Feature to use for coloring
+            interaction_index (str | None): Feature to use for coloring
         """
         if self.shap_values is None:
             raise ValueError("Model is not fitted yet. Call 'fit' before plotting.")

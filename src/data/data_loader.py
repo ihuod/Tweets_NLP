@@ -2,6 +2,7 @@ import pandas as pd
 import sys
 import os
 from IPython.display import display
+import logging
 
 # Add src to PYTHONPATH
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -20,7 +21,10 @@ def load_data():
     
     return df_train, df_test
 
-def process_ids(df_train, df_test):
+def process_ids(df_train: pd.DataFrame, df_test: pd.DataFrame) -> tuple[pd.Series, 
+                                                                        pd.Series, 
+                                                                        pd.DataFrame, 
+                                                                        pd.DataFrame]:
     """
     Extracts and removes ID columns from datasets.
     
@@ -39,7 +43,7 @@ def process_ids(df_train, df_test):
     
     return id_train, id_test, df_train, df_test
 
-def display_data_info(df_train, df_test):
+def display_data_info(df_train: pd.DataFrame, df_test: pd.DataFrame) -> None:
     """
     Displays information about loaded datasets.
     
@@ -47,12 +51,16 @@ def display_data_info(df_train, df_test):
         df_train (pd.DataFrame): Training dataset
         df_test (pd.DataFrame): Test dataset
     """
-    print("\n === Train dataset ===\n")
-    print(f"Shape: {df_train.shape}")
-    print("\nFirst 5 rows:")
+    logging.info("\n === Train dataset ===\n")
+    logging.info(f"Shape: {df_train.shape}")
+    logging.info("\nFirst 5 rows:")
+    logging.info(df_train.head())
+    logging.info(df_train.info())
     display(df_train.head())
     
-    print("\n === Test dataset ===\n")
-    print(f"Shape: {df_test.shape}")
-    print("\nFirst 5 rows:")
+    logging.info("\n === Test dataset ===\n")
+    logging.info(f"Shape: {df_test.shape}")
+    logging.info("\nFirst 5 rows:")
+    logging.info(df_test.head())
+    logging.info(df_test.info())
     display(df_test.head()) 

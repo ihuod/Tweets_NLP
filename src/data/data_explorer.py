@@ -1,51 +1,83 @@
 import pandas as pd
-import numpy as np
 import plotly.express as px
-from typing import Dict, Tuple
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from .data_processor import fill_missing_values
-import matplotlib.pyplot as plt
-import seaborn as sns
 from collections import defaultdict
 from src.utils.constants import STOPWORDS, IS_DISASTER, TOP_NGRAMS_COUNT
 
-def analyze_missing_values(df_train: pd.DataFrame, df_test: pd.DataFrame) -> Dict[str, float]:
+def analyze_missing_values(df_train: pd.DataFrame, df_test: pd.DataFrame, columns: list[str] | None = None) -> dict[str, float]:
     """
-    Analyze missing values in datasets.
+    Analyze missing values in specified columns of train and test datasets.
     
     Args:
         df_train (pd.DataFrame): Training dataset
         df_test (pd.DataFrame): Test dataset
+        columns (list[str] | None): List of columns to analyze. If None, analyzes all columns.
         
     Returns:
-        Dict[str, float]: Dictionary with missing values statistics
+        dict[str, float]: Dictionary with missing value statistics in percentages
     """
-    missing_stats = {}
+    # Use all columns if none specified
+    if columns is None:
+        columns = list(set(df_train.columns) & set(df_test.columns))
     
-    for name, df in [('train', df_train), ('test', df_test)]:
-        missing = df.isnull().sum()
-        missing_percent = (missing / len(df)) * 100
-        missing_stats[f'{name}_missing'] = missing_percent.to_dict()
-        
-    return missing_stats
+    datasets = {'train': df_train, 'test': df_test}
+    
+    # Analyze missing values using functional approach
+    missing_stats = (
+        pd.Series(datasets)
+        .apply(lambda df: {
+            col: (df[col].isnull().sum() / len(df)) * 100 
+            for col in columns
+            if col in df.columns  # Проверяем наличие колонки
+        })
+        .to_dict()
+    )
+    
+    # Flatten nested dictionary and add dataset prefix
+    return {
+        f'{dataset}_{col}_missing': percent 
+        for dataset, stats in missing_stats.items() 
+        for col, percent in stats.items()
+    }
 
-def analyze_unique_values(df_train: pd.DataFrame, df_test: pd.DataFrame) -> Dict[str, int]:
+def analyze_unique_values(
+    df_train: pd.DataFrame, 
+    df_test: pd.DataFrame,
+    columns: list[str] | None = None
+) -> dict[str, int]:
     """
-    Analyze unique values in datasets.
+    Analyze unique values in specified columns of datasets using functional approach.
     
     Args:
         df_train (pd.DataFrame): Training dataset
         df_test (pd.DataFrame): Test dataset
+        columns (list[str] | None): List of columns to analyze.
+            If None, uses ['keyword', 'location']
         
     Returns:
-        Dict[str, int]: Dictionary with unique values statistics
+        dict[str, int]: Dictionary with unique values statistics
     """
-    unique_stats = {}
+    # Use default columns if none provided
+    columns = columns or ['keyword', 'location']
     
-    for name, df in [('train', df_train), ('test', df_test)]:
-        for col in ['keyword', 'location']:
-            unique_stats[f'{name}_{col}_unique'] = df[col].nunique()
-            
-    return unique_stats
+    # Create dictionary with dataset names and dataframes
+    datasets = {'train': df_train, 'test': df_test}
+    
+    # Analyze unique values using functional approach
+    unique_stats = (
+        pd.Series(datasets)
+        .apply(lambda df: {f'{col}_unique': df[col].nunique() for col in columns})
+        .to_dict()
+    )
+    
+    # Flatten nested dictionary and add dataset prefix
+    return {
+        f'{dataset}_{col}': count 
+        for dataset, stats in unique_stats.items() 
+        for col, count in stats.items()
+    }
 
 def print_keyword_location_analysis_results(df_train: pd.DataFrame, df_test: pd.DataFrame) -> None:
     """
@@ -61,14 +93,14 @@ def print_keyword_location_analysis_results(df_train: pd.DataFrame, df_test: pd.
     
     # Print initial statistics
     print("Missing Values Analysis:")
-    for name, stats in missing_stats.items():
-        print(f"\n{name.upper()}:")
-        for col, percent in stats.items():
-            print(f"{col}: {percent:.2f}%")
+    for key, value in missing_stats.items():
+        dataset, col, _ = key.split('_')
+        print(f"\n{dataset.upper()}:")
+        print(f"{col}: {value:.2f}%")
             
     print("\nUnique Values Analysis:")
-    for name, count in unique_stats.items():
-        print(f"{name}: {count}")
+    for key, value in unique_stats.items():
+        print(f"{key}: {value}")
     
     # Fill missing values
     df_train, df_test = fill_missing_values(df_train, df_test)
@@ -137,7 +169,7 @@ def print_keyword_location_analysis_results(df_train: pd.DataFrame, df_test: pd.
 
     fig.show()
 
-def generate_ngrams(text, n_gram=1, stopwords=None):
+def generate_ngrams(text: str, n_gram: int = 1, stopwords: set | None = None) -> list[str]:
     """
     Generate n-grams from text.
     
@@ -155,7 +187,7 @@ def generate_ngrams(text, n_gram=1, stopwords=None):
     ngrams = zip(*[tokens[i:] for i in range(n_gram)])
     return [' '.join(ngram) for ngram in ngrams]
 
-def get_top_ngrams(tweets, n_gram=1, stopwords=None, n_top=TOP_NGRAMS_COUNT):
+def get_top_ngrams(tweets: pd.Series, n_gram: int = 1, stopwords: set | None = None, n_top: int = TOP_NGRAMS_COUNT) -> pd.DataFrame:
     """
     Get top n-grams from a list of tweets.
     
@@ -176,29 +208,29 @@ def get_top_ngrams(tweets, n_gram=1, stopwords=None, n_top=TOP_NGRAMS_COUNT):
     return pd.DataFrame(sorted_ngrams[:n_top], columns=['ngram', 'count'])
 
 def plot_ngrams_comparison(
-        disaster_ngrams_df,
-        nondisaster_ngrams_df,
-        ngram_type, 
-        n_cols=2, 
-        figsize=(18, 50), 
-        dpi=100, 
-        disaster_color='red', 
-        nondisaster_color='green', 
-        x_labelsize=13, 
-        y_labelsize=13, 
-        title_fontsize=15, 
-        y_labelsize_trigrams=11
-):
+        disaster_ngrams_df: pd.DataFrame,
+        nondisaster_ngrams_df: pd.DataFrame,
+        ngram_type: str, 
+        n_cols: int = 2, 
+        figsize: tuple[int, int] = (18, 50), 
+        dpi: int = 100, 
+        disaster_color: str = 'red', 
+        nondisaster_color: str = 'green', 
+        x_labelsize: int = 13, 
+        y_labelsize: int = 13, 
+        title_fontsize: int = 15, 
+        y_labelsize_trigrams: int = 11
+) -> None:
     """
-    Plot comparison of n-grams between disaster and non-disaster tweets.
+    Plot comparison of n-grams between disaster and non-disaster tweets using Plotly.
     
     Args:
         disaster_ngrams_df (pd.DataFrame): DataFrame with disaster n-grams
         nondisaster_ngrams_df (pd.DataFrame): DataFrame with non-disaster n-grams
         ngram_type (str): Type of n-grams ('unigrams', 'bigrams', 'trigrams')
         n_cols (int): Number of columns in the plot
-        figsize (tuple): Figure size
-        dpi (int): DPI of the figure
+        figsize (tuple): Figure size (not used in Plotly)
+        dpi (int): DPI of the figure (not used in Plotly)
         disaster_color (str): Color for disaster n-grams
         nondisaster_color (str): Color for non-disaster n-grams
         x_labelsize (int): Font size for x-axis labels
@@ -209,39 +241,96 @@ def plot_ngrams_comparison(
     Returns:
         None: Displays the plot
     """
-    fig, axes = plt.subplots(ncols=n_cols, figsize=figsize, dpi=dpi)
-    plt.tight_layout()
-    
-    y_tick_size = y_labelsize_trigrams if ngram_type == 'trigrams' else y_labelsize
-    
-    sns.barplot(
-        y='ngram', 
-        x='count', 
-        data=disaster_ngrams_df.head(TOP_NGRAMS_COUNT), 
-        ax=axes[0], 
-        color=disaster_color
+    # Create subplot figure with proper spacing
+    fig = make_subplots(
+        rows=1, 
+        cols=2,
+        subplot_titles=(
+            f'Top {TOP_NGRAMS_COUNT} {ngram_type} in Disaster Tweets',
+            f'Top {TOP_NGRAMS_COUNT} {ngram_type} in Non-disaster Tweets'
+        ),
+        horizontal_spacing=0.25
     )
-    sns.barplot(
-        y='ngram', 
-        x='count', 
-        data=nondisaster_ngrams_df.head(TOP_NGRAMS_COUNT), 
-        ax=axes[1], 
-        color=nondisaster_color
-    )
-    
-    for i in range(n_cols):
-        axes[i].spines['right'].set_visible(False)
-        axes[i].set_xlabel('')
-        axes[i].set_ylabel('')
-        axes[i].tick_params(axis='x', labelsize=x_labelsize)
-        axes[i].tick_params(axis='y', labelsize=y_tick_size)
-    
-    axes[0].set_title(f'Top {TOP_NGRAMS_COUNT} most common {ngram_type} in Disaster Tweets', fontsize=title_fontsize)
-    axes[1].set_title(f'Top {TOP_NGRAMS_COUNT} most common {ngram_type} in Non-disaster Tweets', fontsize=title_fontsize)
-    
-    plt.show()
 
-def analyze_ngrams(df_train):
+    # Add disaster n-grams bar chart
+    fig.add_trace(
+        go.Bar(
+            y=disaster_ngrams_df.head(TOP_NGRAMS_COUNT)['ngram'],
+            x=disaster_ngrams_df.head(TOP_NGRAMS_COUNT)['count'],
+            name='Disaster',
+            marker_color=disaster_color,
+            orientation='h'
+        ),
+        row=1, col=1
+    )
+
+    # Add non-disaster n-grams bar chart
+    fig.add_trace(
+        go.Bar(
+            y=nondisaster_ngrams_df.head(TOP_NGRAMS_COUNT)['ngram'],
+            x=nondisaster_ngrams_df.head(TOP_NGRAMS_COUNT)['count'],
+            name='Non-disaster',
+            marker_color=nondisaster_color,
+            orientation='h'
+        ),
+        row=1, col=2
+    )
+
+    # Update layout with proper margins and spacing
+    fig.update_layout(
+        height=figsize[1] * 10,
+        width=figsize[0] * 50,
+        showlegend=False,
+        title_font_size=title_fontsize,
+        font=dict(size=y_labelsize_trigrams if (ngram_type == 'trigrams' or ngram_type == 'bigrams') else y_labelsize),
+        margin=dict(l=20, r=20, t=40, b=20),
+        bargap=0.2,
+        bargroupgap=0.1
+    )
+
+    # Update axes with proper spacing and labels
+    fig.update_xaxes(
+        title_text='Count',
+        row=1,
+        col=1,
+        showgrid=True,
+        gridwidth=1,
+        gridcolor='LightGray'
+    )
+    fig.update_xaxes(
+        title_text='Count',
+        row=1,
+        col=2,
+        showgrid=True,
+        gridwidth=1,
+        gridcolor='LightGray'
+    )
+    fig.update_yaxes(
+        title_text='',
+        row=1,
+        col=1,
+        showgrid=True,
+        gridwidth=1,
+        gridcolor='LightGray'
+    )
+    fig.update_yaxes(
+        title_text='',
+        row=1,
+        col=2,
+        showgrid=True,
+        gridwidth=1,
+        gridcolor='LightGray'
+    )
+
+    # Show the plot
+    fig.show()
+
+def analyze_ngrams(df_train: pd.DataFrame) -> tuple[pd.DataFrame, 
+                                                    pd.DataFrame, 
+                                                    pd.DataFrame, 
+                                                    pd.DataFrame, 
+                                                    pd.DataFrame, 
+                                                    pd.DataFrame]:
     """
     Analyze n-grams in disaster and non-disaster tweets.
     

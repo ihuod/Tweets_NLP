@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-from typing import Tuple, List, Union
 import re
 
 def preprocess_dataframe(df: pd.DataFrame, text_column: str) -> pd.DataFrame:
@@ -18,43 +16,56 @@ def preprocess_dataframe(df: pd.DataFrame, text_column: str) -> pd.DataFrame:
     df[text_column] = clean_texts(df[text_column])
     return df
 
-def fill_missing_values(df_train: pd.DataFrame, df_test: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def fill_missing_values(
+    df_train: pd.DataFrame, 
+    df_test: pd.DataFrame,
+    columns: list[str] | None = None,
+    default_prefix: str = 'no_'
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Fill missing values in keyword and location columns.
+    Fill missing values in specified columns using functional pandas approach.
     
     Args:
         df_train (pd.DataFrame): Training dataset
         df_test (pd.DataFrame): Test dataset
+        columns (list[str] | None): List of columns to fill missing values in.
+            If None, uses ['keyword', 'location']
+        default_prefix (str): Prefix for default values. Default is 'no_'
         
     Returns:
-        Tuple[pd.DataFrame, pd.DataFrame]: Processed datasets
+        tuple[pd.DataFrame, pd.DataFrame]: Processed datasets with filled missing values
     """
-    df_train = df_train.copy()
-    df_test = df_test.copy()
+    # Use default columns if none provided
+    columns = columns or ['keyword', 'location']
     
-    for df in [df_train, df_test]:
-        for col in ['keyword', 'location']:
-            df[col] = df[col].fillna(f'no_{col}')
-            
+    # Create dictionary for filling missing values
+    fill_vals = {col: f'{default_prefix}{col}' for col in columns}
+    
+    # Fill missing values in specified columns
+    df_train, df_test = (
+        pd.Series([df_train, df_test])
+        .apply(lambda df: df.fillna(fill_vals))
+    )
+        
     return df_train, df_test
 
-def remove_duplicates(df: pd.DataFrame, subset: List[str] = None) -> Tuple[pd.DataFrame, int]:
+def remove_duplicates(df: pd.DataFrame, subset: list[str] = None) -> tuple[pd.DataFrame, int]:
     """
     Remove duplicate rows from dataframe.
     
     Args:
         df (pd.DataFrame): Input dataframe
-        subset (List[str], optional): List of columns to consider for duplicates
+        subset (list[str], optional): list of columns to consider for duplicates
         
     Returns:
-        Tuple[pd.DataFrame, int]: Processed dataframe and number of removed duplicates
+        tuple[pd.DataFrame, int]: Processed dataframe and number of removed duplicates
     """
     initial_len = len(df)
     df = df.drop_duplicates(subset=subset, keep='first')
     removed_count = initial_len - len(df)
     return df, removed_count
 
-def split_features_target(df: pd.DataFrame, target_column: str) -> Tuple[pd.DataFrame, pd.Series]:
+def split_features_target(df: pd.DataFrame, target_column: str) -> tuple[pd.DataFrame, pd.Series]:
     """
     Split dataframe into features and target.
     
@@ -63,13 +74,13 @@ def split_features_target(df: pd.DataFrame, target_column: str) -> Tuple[pd.Data
         target_column (str): Name of the target column
         
     Returns:
-        Tuple[pd.DataFrame, pd.Series]: Features and target
+        tuple[pd.DataFrame, pd.Series]: Features and target
     """
     X = df.drop(columns=[target_column])
     y = df[target_column]
     return X, y
 
-def get_categorical_columns(df: pd.DataFrame) -> List[str]:
+def get_categorical_columns(df: pd.DataFrame) -> list[str]:
     """
     Get list of categorical columns.
     
@@ -77,11 +88,11 @@ def get_categorical_columns(df: pd.DataFrame) -> List[str]:
         df (pd.DataFrame): Input dataframe
         
     Returns:
-        List[str]: List of categorical column names
+        list[str]: list of categorical column names
     """
     return df.select_dtypes(include=['object', 'category']).columns.tolist()
 
-def get_numerical_columns(df: pd.DataFrame) -> List[str]:
+def get_numerical_columns(df: pd.DataFrame) -> list[str]:
     """
     Get list of numerical columns.
     
@@ -89,16 +100,16 @@ def get_numerical_columns(df: pd.DataFrame) -> List[str]:
         df (pd.DataFrame): Input dataframe
         
     Returns:
-        List[str]: List of numerical column names
+        list[str]: list of numerical column names
     """
     return df.select_dtypes(include=['int64', 'float64']).columns.tolist()
 
-def clean_text(text: Union[str, float]) -> str:
+def clean_text(text: str | float) -> str:
     """
     Clean text by removing URLs, mentions, hashtags, special characters and unknown symbols.
     
     Args:
-        text (Union[str, float]): Text to clean
+        text (str | float): Text to clean
         
     Returns:
         str: Cleaned text
@@ -126,12 +137,12 @@ def clean_text(text: Union[str, float]) -> str:
     
     return text.strip()
 
-def clean_texts(texts: Union[pd.Series, List[str]]) -> pd.Series:
+def clean_texts(texts: pd.Series | list[str]) -> pd.Series:
     """
     Clean multiple texts.
     
     Args:
-        texts (Union[pd.Series, List[str]]): Texts to clean
+        texts (pd.Series | list[str]): Texts to clean
         
     Returns:
         pd.Series: Cleaned texts

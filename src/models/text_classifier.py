@@ -1,127 +1,123 @@
 """
-Text classifier model using TF-IDF and Logistic Regression.
+Module for text classification using scikit-learn Pipeline.
 """
 
 import numpy as np
-from typing import Any, Dict, Optional, List
+from typing import Any
+from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
-from .base_model import BaseModel
+from src.utils.constants import (
+    DEFAULT_VECTORIZER_PARAMS,
+    DEFAULT_CLASSIFIER_PARAMS,
+    DEFAULT_TOP_FEATURES,
+    DEFAULT_N_JOBS
+)
 
-class TextClassifier(BaseModel):
+class TextPreprocessor(BaseEstimator, TransformerMixin):
     """
-    Text classifier using TF-IDF and Logistic Regression.
+    Base class for text preprocessing.
+    You can inherit from it to create your own preprocessors.
     """
-    
-    def __init__(
-        self,
-        vectorizer_params: Optional[Dict[str, Any]] = None,
-        classifier_params: Optional[Dict[str, Any]] = None,
-        n_jobs: int = -1
-    ):
-        """
-        Initialize the text classifier.
-        
-        Args:
-            vectorizer_params (Optional[Dict[str, Any]]): Parameters for TfidfVectorizer
-            classifier_params (Optional[Dict[str, Any]]): Parameters for LogisticRegression
-            n_jobs (int): Number of jobs to run in parallel
-        """
-        super().__init__(n_jobs=n_jobs)
-        self._vectorizer_params = vectorizer_params or {}
-        self._classifier_params = classifier_params or {}
-        self._model = None
-        
-    @property
-    def model(self) -> Pipeline:
-        """
-        Get the model pipeline.
-        
-        Returns:
-            Pipeline: Model pipeline
-        """
-        if self._model is None:
-            self._model = self._create_pipeline()
-        return self._model
-        
-    def _create_pipeline(self) -> Pipeline:
-        """
-        Create the model pipeline.
-        
-        Returns:
-            Pipeline: Model pipeline
-        """
-        return Pipeline([
-            ('vectorizer', TfidfVectorizer(**self._vectorizer_params)),
-            ('classifier', LogisticRegression(n_jobs=self.n_jobs, **self._classifier_params))
-        ])
-        
-    def fit(self, X: np.ndarray, y: np.ndarray) -> 'TextClassifier':
-        """
-        Fit the model.
-        
-        Args:
-            X (np.ndarray): Training features
-            y (np.ndarray): Target values
-            
-        Returns:
-            TextClassifier: Self
-        """
-        self.model.fit(X, y)
+    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> 'TextPreprocessor':
         return self
         
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        """
-        Make predictions.
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        return X
+
+def create_text_classification_pipeline(
+    vectorizer: BaseEstimator | None = None,
+    classifier: ClassifierMixin | None = None,
+    preprocessors: list[tuple[str, BaseEstimator]] | None = None,
+    vectorizer_params: dict[str, Any] | None = None,
+    classifier_params: dict[str, Any] | None = None,
+    n_jobs: int = DEFAULT_N_JOBS
+) -> Pipeline:
+    """
+    Creates a universal pipeline for text classification.
+    
+    Args:
+        vectorizer (Optional[BaseEstimator]): Text vectorizer (e.g. TfidfVectorizer)
+        classifier (Optional[ClassifierMixin]): Classifier
+        preprocessors (Optional[list[tuple[str, BaseEstimator]]]): list of preprocessors in format (name, object)
+        vectorizer_params (Optional[dict[str, Any]]): Parameters for vectorizer
+        classifier_params (Optional[dict[str, Any]]): Parameters for classifier
+        n_jobs (int): Number of parallel processes
         
-        Args:
-            X (np.ndarray): Features to predict
-            
-        Returns:
-            np.ndarray: Predictions
-        """
-        return self.model.predict(X)
+    Returns:
+        Pipeline: Pipeline for text classification
+    """
+    # Use TfidfVectorizer by default, if no other vectorizer is specified
+    if vectorizer is None:
+        params = DEFAULT_VECTORIZER_PARAMS.copy()
+        if vectorizer_params:
+            params.update(vectorizer_params)
+        vectorizer = TfidfVectorizer(**params)
+    elif vectorizer_params:
+        vectorizer.set_params(**vectorizer_params)
+    
+    # Use LogisticRegression by default, if no other classifier is specified
+    if classifier is None:
+        params = DEFAULT_CLASSIFIER_PARAMS.copy()
+        if classifier_params:
+            params.update(classifier_params)
+        classifier = LogisticRegression(**params)
+    elif classifier_params:
+        classifier.set_params(**classifier_params)
+    
+    # Create pipeline steps
+    steps = []
+    
+    # Add preprocessors, if they are specified
+    if preprocessors:
+        steps.extend(preprocessors)
+    
+    # Add vectorizer
+    steps.append(('vectorizer', vectorizer))
+    
+    # Add classifier
+    steps.append(('classifier', classifier))
+    
+    return Pipeline(steps)
+
+def get_feature_names(pipeline: Pipeline) -> list[str]:
+    """
+    Get feature names from pipeline.
+    
+    Args:
+        pipeline (Pipeline): Trained pipeline
         
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """
-        Predict class probabilities.
+    Returns:
+        list[str]: list of feature names
+    """
+    return pipeline.named_steps['vectorizer'].get_feature_names_out()
+
+def get_feature_importance(
+    pipeline: Pipeline,
+    top_n: int = DEFAULT_TOP_FEATURES
+) -> dict[str, float]:
+    """
+    Get feature importance from pipeline.
+    
+    Args:
+        pipeline (Pipeline): Trained pipeline
+        top_n (int): Number of top features
         
-        Args:
-            X (np.ndarray): Features to predict
-            
-        Returns:
-            np.ndarray: Class probabilities
-        """
-        return self.model.predict_proba(X)
-        
-    def get_feature_names(self) -> List[str]:
-        """
-        Get feature names.
-        
-        Returns:
-            List[str]: Feature names
-        """
-        return self.model.named_steps['vectorizer'].get_feature_names_out()
-        
-    def get_feature_importance(self, top_n: int = 20) -> Dict[str, float]:
-        """
-        Get feature importance.
-        
-        Args:
-            top_n (int): Number of top features to return
-            
-        Returns:
-            Dict[str, float]: Feature importance
-        """
-        # Get feature names and coefficients
-        feature_names = self.get_feature_names()
-        coefficients = self.model.named_steps['classifier'].coef_[0]
-        
-        # Calculate feature importance
+    Returns:
+        dict[str, float]: dictionary with feature importance
+    """
+    # Get feature names and coefficients
+    feature_names = get_feature_names(pipeline)
+    classifier = pipeline.named_steps['classifier']
+    
+    # Check if classifier has coef_ attribute
+    if hasattr(classifier, 'coef_'):
+        coefficients = classifier.coef_[0]
+        # Create dictionary with feature importance
         feature_importance = dict(zip(feature_names, np.abs(coefficients)))
         
-        # Sort by importance and get top N
+        # Sort by importance and take top N
         sorted_features = sorted(
             feature_importance.items(),
             key=lambda x: x[1],
@@ -129,49 +125,7 @@ class TextClassifier(BaseModel):
         )[:top_n]
         
         return dict(sorted_features)
-        
-    def get_params(self, deep: bool = True) -> Dict[str, Any]:
-        """
-        Get parameters for this estimator.
-        
-        Args:
-            deep (bool): If True, will return the parameters for this estimator and
-                        contained subobjects that are estimators.
-                        
-        Returns:
-            Dict[str, Any]: Parameter names mapped to their values
-        """
-        params = {
-            'vectorizer_params': self._vectorizer_params,
-            'classifier_params': self._classifier_params,
-            'n_jobs': self.n_jobs
-        }
-        if deep and self._model is not None:
-            params['model'] = self._model
-        return params
-        
-    def set_params(self, **params: Any) -> 'TextClassifier':
-        """
-        Set the parameters of this estimator.
-        
-        Args:
-            **params (Any): Estimator parameters
-            
-        Returns:
-            TextClassifier: Self
-        """
-        if 'vectorizer_params' in params:
-            self._vectorizer_params = params.pop('vectorizer_params')
-        if 'classifier_params' in params:
-            self._classifier_params = params.pop('classifier_params')
-        if 'n_jobs' in params:
-            self.n_jobs = params.pop('n_jobs')
-            
-        # Reset model to force recreation with new parameters
-        self._model = None
-        
-        # Set any remaining parameters
-        for param, value in params.items():
-            setattr(self, param, value)
-            
-        return self 
+    else:
+        raise AttributeError(
+            f"Classifier {classifier.__class__.__name__} does not have feature importance"
+        )

@@ -1,66 +1,67 @@
-# NLP with Disaster Tweets
+# Twitter Analysis Project
 
-## Environment Setup
+## Настройка окружения
 
-### 1. Activate Virtual Environment
+### 1. Активация виртуального окружения
 
 ```bash
-# Activate the virtual environment
+# Активация виртуального окружения
 source venv/bin/activate
 
-# Or use the launch script
+# Или используйте скрипт запуска
 ./run.sh
+```
 
-### 2. Install Dependencies
+### 2. Установка зависимостей
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Launch Jupyter Notebook
+### 3. Запуск Jupyter Notebook
 
 ```bash
-# After activating the virtual environment
+# После активации виртуального окружения
 jupyter notebook
 ```
 
-### 4. VS Code Setup
+### 4. Настройка VS Code
 
-1. Open the project in VS Code
-2. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows)
-3. Type "Python: Select Interpreter"
-4. Select the interpreter from the virtual environment: `./venv/bin/python`
+1. Откройте проект в VS Code
+2. Нажмите `Cmd+Shift+P` (Mac) или `Ctrl+Shift+P` (Windows)
+3. Введите "Python: Select Interpreter"
+4. Выберите интерпретатор из виртуального окружения: `./venv/bin/python`
 
-### 5. Verify the Environment
+### 5. Проверка окружения
 
-In a Jupyter Notebook or Python script:
+В Jupyter Notebook или Python скрипте:
 
 ```python
 import sys
-print(sys.executable)  # Should display the path to Python in the virtual environment
+print(sys.executable)  # Должен показать путь к Python в виртуальном окружении
 ```
 
-## Project Structure
+## Структура проекта
 
 ```
 tweets/
-├── data/                 # Data
-│   ├── raw/              # Raw data
-│   └── processed/        # Processed data
-├── notebooks/            # Jupyter notebooks
-├── src/                  # Source code
-│   ├── data/             # Data processing modules
-│   ├── features/         # Feature engineering modules
-│   ├── models/           # Model modules
-│   └── utils/            # Utility functions
-└── tests/                # Tests
+├── data/                  # Данные
+│   ├── raw/              # Исходные данные
+│   └── processed/        # Обработанные данные
+├── notebooks/            # Jupyter ноутбуки
+├── src/                  # Исходный код
+│   ├── data/            # Модули для работы с данными
+│   ├── features/        # Модули для создания признаков
+│   ├── models/          # Модули с моделями
+│   └── utils/           # Вспомогательные функции
+└── tests/               # Тесты
 ```
 
-## Usage
+## Использование
 
-1. Activate the virtual environment
-2. Start Jupyter Notebook:
+1. Активировать виртуальное окружение
+2. Запустить Jupyter Notebook:
 ```bash
 jupyter notebook
 ```
-3. Open `notebooks/main.ipynb`  
+3. Открыть `notebooks/main.ipynb` 

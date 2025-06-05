@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
-from typing import Any, Dict, Optional
+from typing import Any
 
 class BaseModel(ABC):
     """
@@ -56,7 +56,7 @@ class BaseModel(ABC):
         """
         pass
         
-    def get_params(self, deep: bool = True) -> Dict[str, Any]:
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
         """
         Get parameters for this estimator.
         
@@ -65,7 +65,7 @@ class BaseModel(ABC):
                         contained subobjects that are estimators.
                         
         Returns:
-            Dict[str, Any]: Parameter names mapped to their values
+            dict[str, Any]: Parameter names mapped to their values
         """
         return {'n_jobs': self.n_jobs}
         

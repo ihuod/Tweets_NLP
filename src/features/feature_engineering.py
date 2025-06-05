@@ -2,6 +2,7 @@ import numpy as np
 import string
 import emoji
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from src.utils.constants import (
@@ -14,7 +15,7 @@ from src.utils.constants import (
 # Initialize sentiment analyzer
 sid = SentimentIntensityAnalyzer()
 
-def add_word_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_word_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add word count to the text.
     
@@ -28,7 +29,7 @@ def add_word_count(df, text_column=DEFAULT_TEXT_COLUMN):
     df['word_count'] = df[text_column].apply(lambda x: len(str(x).split()))
     return df
 
-def add_unique_word_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_unique_word_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add unique word count to the text.
     
@@ -42,7 +43,7 @@ def add_unique_word_count(df, text_column=DEFAULT_TEXT_COLUMN):
     df['unique_word_count'] = df[text_column].apply(lambda x: len(set(str(x).split())))
     return df
 
-def add_stop_word_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_stop_word_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add stop word count to the text.
     
@@ -57,7 +58,7 @@ def add_stop_word_count(df, text_column=DEFAULT_TEXT_COLUMN):
         lambda x: len([w for w in str(x).lower().split() if w in STOPWORDS]))
     return df
 
-def add_url_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_url_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add URL count to the text.
     
@@ -72,7 +73,7 @@ def add_url_count(df, text_column=DEFAULT_TEXT_COLUMN):
         lambda x: len([w for w in str(x).lower().split() if 'http' in w or 'https' in w]))
     return df
 
-def add_mean_word_length(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_mean_word_length(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add mean word length to the text.
     
@@ -87,7 +88,7 @@ def add_mean_word_length(df, text_column=DEFAULT_TEXT_COLUMN):
         lambda x: np.mean([len(w) for w in str(x).split()]))
     return df
 
-def add_char_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_char_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add character count to the text.
     
@@ -101,7 +102,7 @@ def add_char_count(df, text_column=DEFAULT_TEXT_COLUMN):
     df['char_count'] = df[text_column].apply(lambda x: len(str(x)))
     return df
 
-def add_punctuation_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_punctuation_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add punctuation count to the text.
     
@@ -116,7 +117,7 @@ def add_punctuation_count(df, text_column=DEFAULT_TEXT_COLUMN):
         lambda x: len([c for c in str(x) if c in string.punctuation]))
     return df
 
-def add_hashtag_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_hashtag_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add hashtag count to the text.
     
@@ -130,7 +131,7 @@ def add_hashtag_count(df, text_column=DEFAULT_TEXT_COLUMN):
     df['hashtag_count'] = df[text_column].apply(lambda x: len([c for c in str(x) if c == '#']))
     return df
 
-def add_mention_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_mention_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add mention count to the text.
     
@@ -144,7 +145,7 @@ def add_mention_count(df, text_column=DEFAULT_TEXT_COLUMN):
     df['mention_count'] = df[text_column].apply(lambda x: len([c for c in str(x) if c == '@']))
     return df
 
-def add_excl_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_excl_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add exclamation mark count to the text.
     
@@ -158,7 +159,7 @@ def add_excl_count(df, text_column=DEFAULT_TEXT_COLUMN):
     df['excl_count'] = df[text_column].apply(lambda x: str(x).count('!'))
     return df
 
-def add_vader_scores(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_vader_scores(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add VADER sentiment scores to the text.
     
@@ -176,7 +177,7 @@ def add_vader_scores(df, text_column=DEFAULT_TEXT_COLUMN):
     df['vader_compound'] = sentiments.apply(lambda x: x['compound'])
     return df
 
-def add_emoji_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_emoji_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add emoji count to the text.
     
@@ -190,7 +191,7 @@ def add_emoji_count(df, text_column=DEFAULT_TEXT_COLUMN):
     df['emoji_count'] = df[text_column].apply(lambda x: emoji.emoji_count(str(x)))
     return df
 
-def add_caps_count(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_caps_count(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add count of words in capital letters to the text.
     
@@ -205,7 +206,7 @@ def add_caps_count(df, text_column=DEFAULT_TEXT_COLUMN):
         lambda x: len([w for w in str(x).split() if w.isupper() and len(w) > 1]))
     return df
 
-def add_all_text_features(df, text_column=DEFAULT_TEXT_COLUMN):
+def add_all_text_features(df: pd.DataFrame, text_column: str = DEFAULT_TEXT_COLUMN) -> pd.DataFrame:
     """
     Add all text features to the dataframe.
     
@@ -232,7 +233,7 @@ def add_all_text_features(df, text_column=DEFAULT_TEXT_COLUMN):
     
     return df 
 
-def plot_metafeatures_distribution(df_train, df_test):
+def plot_metafeatures_distribution(df_train: pd.DataFrame, df_test: pd.DataFrame) -> None:
     """
     Plot distribution of meta-features for disaster and non-disaster tweets,
     and compare distributions between training and test sets.
@@ -250,12 +251,12 @@ def plot_metafeatures_distribution(df_train, df_test):
     
     for i, feature in enumerate(METAFEATURES):
         # Plot distribution for disaster vs non-disaster tweets
-        sns.distplot(df_train.loc[~disaster_tweets][feature], label='Not Disaster', ax=axes[i][0], color='green')
-        sns.distplot(df_train.loc[disaster_tweets][feature], label='Disaster', ax=axes[i][0], color='red')
+        sns.displot(df_train.loc[~disaster_tweets][feature], label='Not Disaster', ax=axes[i][0], color='green')
+        sns.displot(df_train.loc[disaster_tweets][feature], label='Disaster', ax=axes[i][0], color='red')
         
         # Plot distribution for training vs test sets
-        sns.distplot(df_train[feature], label='Training', ax=axes[i][1])
-        sns.distplot(df_test[feature], label='Test', ax=axes[i][1])
+        sns.displot(df_train[feature], label='Training', ax=axes[i][1])
+        sns.displot(df_test[feature], label='Test', ax=axes[i][1])
         
         # Customize plots
         for j in range(2):
