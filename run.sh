@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Активация виртуального окружения
+# Activate virtual environment
 source venv/bin/activate
 
-# Запуск Jupyter Notebook
+# Run Jupyter Notebook
 jupyter notebook 
