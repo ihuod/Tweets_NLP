@@ -65,4 +65,3 @@ tweets/
 jupyter notebook
 ```
 3. Open `notebooks/main.ipynb`  
-```
