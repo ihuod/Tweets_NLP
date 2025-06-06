@@ -74,84 +74,48 @@ def optuna_tune(
     
     return study, study.best_params
 
-def pipeline_factory(params: dict[str, Any]) -> Any:
-    """Create a text classification pipeline with given parameters."""
-    return create_text_classification_pipeline(
-        vectorizer_params={
-            'max_features': params['max_features'],
-            'ngram_range': params['ngram_range'],
-            'min_df': params['min_df'],
-            'max_df': params['max_df']
-        },
-        classifier_params={
-            'C': params['C'],
-            'max_iter': params['max_iter'],
-            'class_weight': params['class_weight'],
-            'random_state': 42
-        },
-        n_jobs=-1
-    )
-
-def param_space(trial: optuna.Trial) -> dict[str, Any]:
-    """Define parameter space for Optuna optimization."""
-    # TF-IDF parameters
-    max_features = trial.suggest_int('max_features', 1000, 15000, step=1000)
-    ngram_range = trial.suggest_categorical('ngram_range', [(1, 1), (1, 2), (1, 3)])
-    min_df = trial.suggest_int('min_df', 1, 10)
-    max_df = trial.suggest_float('max_df', 0.7, 1.0)
-    
-    # Logistic Regression parameters
-    C = trial.suggest_float('C', 1e-3, 100.0, log=True)
-    penalty = trial.suggest_categorical('penalty', ['l1', 'l2', 'elasticnet', 'none'])
-    solver = trial.suggest_categorical('solver', ['liblinear', 'saga', 'lbfgs', 'newton-cg', 'sag'])
-    max_iter = trial.suggest_int('max_iter', 100, 2000, step=100)
-    class_weight = trial.suggest_categorical('class_weight', [None, 'balanced'])
-    l1_ratio = None
-    
-    # l1_ratio only for penalty='elasticnet' and solver='saga'
-    if penalty == 'elasticnet' and solver == 'saga':
-        l1_ratio = trial.suggest_float('l1_ratio', 0.0, 1.0)
-    
-    params = {
-        'max_features': max_features,
-        'ngram_range': ngram_range,
-        'min_df': min_df,
-        'max_df': max_df,
-        'C': C,
-        'penalty': penalty,
-        'solver': solver,
-        'max_iter': max_iter,
-        'class_weight': class_weight
-    }
-    if l1_ratio is not None:
-        params['l1_ratio'] = l1_ratio
-    return params
-
 def find_optimal_text_classifier_params(
     X: np.ndarray,
     y: np.ndarray,
+    pipeline_factory: Callable[[dict[str, Any]], Any],
+    param_space: Callable[[optuna.Trial], dict[str, Any]],
     n_trials: int = DEFAULT_OPTIMIZATION_TRIALS,
     cv: int = DEFAULT_CV_FOLDS,
     scoring: str = DEFAULT_SCORING,
     n_jobs: int = DEFAULT_N_JOBS,
     show_progress_bar: bool = DEFAULT_OPTIMIZATION_SHOW_PROGRESS
 ) -> tuple[optuna.Study, dict[str, Any]]:
-    """Find optimal hyperparameters for text classifier using Optuna."""
+    """
+    Find optimal hyperparameters using Optuna.
     
+    Args:
+        X (np.ndarray): Features
+        y (np.ndarray): Target
+        pipeline_factory (Callable): Function that creates pipeline from parameters
+        param_space (Callable): Function that defines parameter space for Optuna
+        n_trials (int): Number of trials
+        cv (int): Number of cross-validation folds
+        scoring (str): Scoring metric
+        n_jobs (int): Number of jobs for parallel processing
+        show_progress_bar (bool): Show progress bar
+        
+    Returns:
+        tuple[optuna.Study, dict[str, Any]]: Study and best parameters
+    """
     def objective(trial: optuna.Trial) -> float:
         # Get parameters
         params = param_space(trial)
         
         # Create pipeline
         pipeline = pipeline_factory(params)
-
+        
+        # Evaluate pipeline
         cv_split = StratifiedKFold(
             n_splits=cv,
             shuffle=CV_STRATEGIES['shuffle'],
             random_state=DEFAULT_RANDOM_STATE
         )
         
-        # Evaluate pipeline
         scores = cross_val_score(
             pipeline,
             X,
@@ -176,15 +140,8 @@ def find_optimal_text_classifier_params(
     
     # Print results
     print("\nOptimal hyperparameters:")
-    print("\nTF-IDF parameters:")
-    for param in ['max_features', 'ngram_range', 'min_df', 'max_df']:
-        if param in best_params:
-            print(f"{param}: {best_params[param]}")
-    
-    print("\nLogistic Regression parameters:")
-    for param in ['C', 'penalty', 'solver', 'max_iter', 'class_weight', 'l1_ratio']:
-        if param in best_params:
-            print(f"{param}: {best_params[param]}")
+    for param, value in best_params.items():
+        print(f"{param}: {value}")
     
     print(f"\nBest {scoring} score: {study.best_value:.4f}")
     

@@ -14,8 +14,6 @@ from .model_trainer import ModelTrainer
 from .hyperparameter_tuning import (
     create_study,
     optuna_tune,
-    pipeline_factory,
-    param_space,
     find_optimal_text_classifier_params
 )
 
@@ -32,7 +30,5 @@ __all__ = [
     # hyperparameter_tuning
     'create_study',
     'optuna_tune',
-    'pipeline_factory',
-    'param_space',
     'find_optimal_text_classifier_params'
 ] 

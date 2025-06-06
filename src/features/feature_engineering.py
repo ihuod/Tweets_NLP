@@ -251,12 +251,12 @@ def plot_metafeatures_distribution(df_train: pd.DataFrame, df_test: pd.DataFrame
     
     for i, feature in enumerate(METAFEATURES):
         # Plot distribution for disaster vs non-disaster tweets
-        sns.displot(df_train.loc[~disaster_tweets][feature], label='Not Disaster', ax=axes[i][0], color='green')
-        sns.displot(df_train.loc[disaster_tweets][feature], label='Disaster', ax=axes[i][0], color='red')
+        sns.distplot(df_train.loc[~disaster_tweets][feature], label='Not Disaster', ax=axes[i][0], color='green')
+        sns.distplot(df_train.loc[disaster_tweets][feature], label='Disaster', ax=axes[i][0], color='red')
         
         # Plot distribution for training vs test sets
-        sns.displot(df_train[feature], label='Training', ax=axes[i][1])
-        sns.displot(df_test[feature], label='Test', ax=axes[i][1])
+        sns.distplot(df_train[feature], label='Training', ax=axes[i][1])
+        sns.distplot(df_test[feature], label='Test', ax=axes[i][1])
         
         # Customize plots
         for j in range(2):
