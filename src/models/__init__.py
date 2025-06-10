@@ -1,5 +1,9 @@
 """
-Пакет для работы с моделями классификации текста.
+Package for text classification models.
+Contains functions for:
+- Creating text classification pipelines
+- Hyperparameter tuning
+- Model evaluation
 """
 
 from .text_classifier import (
@@ -8,8 +12,6 @@ from .text_classifier import (
     get_feature_importance,
     TextPreprocessor
 )
-
-from .model_trainer import ModelTrainer
 
 from .hyperparameter_tuning import (
     create_study,
@@ -30,15 +32,12 @@ __all__ = [
     'get_feature_importance',
     'TextPreprocessor',
     
-    # model_trainer
-    'ModelTrainer',
-    
     # hyperparameter_tuning
     'create_study',
     'optuna_tune',
     'find_optimal_text_classifier_params',
     'optimize_hyperparameters',
-    
+
     # model_evaluation
     'cross_validate_model',
     'nested_cross_validate_model'

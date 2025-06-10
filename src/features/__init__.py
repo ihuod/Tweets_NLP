@@ -1,9 +1,9 @@
 """
-Модуль для создания признаков.
-Содержит функции для:
-- Извлечения текстовых признаков
-- Анализа настроений
-- Подсчета статистик текста
+Package for feature extraction and analysis.
+Contains functions for:
+- Extracting text features
+- Analyzing sentiment
+- Counting text statistics
 """
 
 from .feature_engineering import (
