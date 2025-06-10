@@ -19,7 +19,6 @@ from src.utils.constants import (
     CV_STRATEGIES,
     DEFAULT_RANDOM_STATE
 )
-from src.models.text_classifier import create_text_classification_pipeline
 
 def create_study(
     study_name: str = DEFAULT_OPTIMIZATION_STUDY_NAME,
@@ -74,6 +73,63 @@ def optuna_tune(
     
     return study, study.best_params
 
+def tune_hyperparameters_for_fold(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    pipeline_factory: Callable[[dict[str, Any]], Any],
+    param_space: Callable[[Any], dict[str, Any]],
+    n_trials: int = DEFAULT_OPTIMIZATION_TRIALS,
+    cv: int = DEFAULT_CV_FOLDS,
+    scoring: str = DEFAULT_SCORING,
+    n_jobs: int = DEFAULT_N_JOBS,
+    random_state: int = DEFAULT_RANDOM_STATE
+) -> tuple[dict[str, Any], float]:
+    """
+    Tune hyperparameters for a single fold in nested cross-validation.
+    
+    Args:
+        X_train (np.ndarray): Training features
+        y_train (np.ndarray): Training target
+        pipeline_factory (Callable): Pipeline factory
+        param_space (Callable): Function returning parameters for trial
+        n_trials (int): Number of Optuna trials
+        cv (int): Number of folds for inner CV
+        scoring (str): Scoring metric
+        n_jobs (int): Number of jobs for parallel processing
+        random_state (int): Random state for reproducibility
+        
+    Returns:
+        tuple[dict[str, Any], float]: Best parameters and their score
+    """
+    inner_cv_split = StratifiedKFold(
+        n_splits=cv,
+        shuffle=CV_STRATEGIES['shuffle'],
+        random_state=random_state
+    )
+
+    def objective(trial):
+        params = param_space(trial)
+        pipeline = pipeline_factory(params)
+        score = cross_val_score(
+            pipeline, X_train, y_train,
+            cv=inner_cv_split,
+            scoring=scoring,
+            n_jobs=n_jobs
+        ).mean()
+        return score
+
+    study, best_params = optuna_tune(
+        objective=objective,
+        n_trials=n_trials,
+        study_name=f'fold_optimization_{random_state}',
+        direction=DEFAULT_OPTIMIZATION_DIRECTION,
+        storage=None,
+        load_if_exists=False,
+        show_progress_bar=False
+    )
+    
+    return best_params, study.best_value
+
 def find_optimal_text_classifier_params(
     X: np.ndarray,
     y: np.ndarray,
@@ -103,13 +159,8 @@ def find_optimal_text_classifier_params(
         tuple[optuna.Study, dict[str, Any]]: Study and best parameters
     """
     def objective(trial: optuna.Trial) -> float:
-        # Get parameters
         params = param_space(trial)
-        
-        # Create pipeline
         pipeline = pipeline_factory(params)
-        
-        # Evaluate pipeline
         cv_split = StratifiedKFold(
             n_splits=cv,
             shuffle=CV_STRATEGIES['shuffle'],
@@ -117,9 +168,7 @@ def find_optimal_text_classifier_params(
         )
         
         scores = cross_val_score(
-            pipeline,
-            X,
-            y,
+            pipeline, X, y,
             cv=cv_split,
             scoring=scoring,
             n_jobs=n_jobs
@@ -146,3 +195,72 @@ def find_optimal_text_classifier_params(
     print(f"\nBest {scoring} score: {study.best_value:.4f}")
     
     return study, best_params 
+
+def optimize_hyperparameters(
+    X: np.ndarray,
+    y: np.ndarray,
+    pipeline_factory: Callable[[dict[str, Any]], Any],
+    param_space: Callable[[optuna.Trial], dict[str, Any]],
+    n_trials: int = DEFAULT_OPTIMIZATION_TRIALS,
+    cv: int = DEFAULT_CV_FOLDS,
+    scoring: str = DEFAULT_SCORING,
+    n_jobs: int = DEFAULT_N_JOBS,
+    random_state: int = DEFAULT_RANDOM_STATE,
+    study_name: str = DEFAULT_OPTIMIZATION_STUDY_NAME,
+    direction: str = DEFAULT_OPTIMIZATION_DIRECTION,
+    storage: str | None = DEFAULT_OPTIMIZATION_STORAGE,
+    load_if_exists: bool = DEFAULT_OPTIMIZATION_LOAD_IF_EXISTS,
+    show_progress_bar: bool = DEFAULT_OPTIMIZATION_SHOW_PROGRESS
+) -> tuple[dict[str, Any], float]:
+    """
+    Universal function for hyperparameter optimization.
+    Works with any model type and parameter space.
+    
+    Args:
+        X (np.ndarray): Features
+        y (np.ndarray): Target values
+        pipeline_factory (Callable): Function that creates pipeline from parameters
+        param_space (Callable): Function that defines parameter space
+        n_trials (int): Number of trials
+        cv (int): Number of cross-validation folds
+        scoring (str): Scoring metric
+        n_jobs (int): Number of jobs for parallel processing
+        random_state (int): Random state for reproducibility
+        study_name (str): Name of the study
+        direction (str): Direction of optimization
+        storage (str | None): Database URL for storing study results
+        load_if_exists (bool): Whether to load existing study
+        show_progress_bar (bool): Show progress bar
+        
+    Returns:
+        tuple[dict[str, Any], float]: Best parameters and their score
+    """
+    def objective(trial: optuna.Trial) -> float:
+        params = param_space(trial)
+        pipeline = pipeline_factory(params)
+        cv_split = StratifiedKFold(
+            n_splits=cv,
+            shuffle=CV_STRATEGIES['shuffle'],
+            random_state=random_state
+        )
+        
+        scores = cross_val_score(
+            pipeline, X, y,
+            cv=cv_split,
+            scoring=scoring,
+            n_jobs=n_jobs
+        )
+        
+        return np.mean(scores)
+    
+    study, best_params = optuna_tune(
+        objective=objective,
+        n_trials=n_trials,
+        study_name=study_name,
+        direction=direction,
+        storage=storage,
+        load_if_exists=load_if_exists
+    )
+
+    
+    return best_params, study.best_value 

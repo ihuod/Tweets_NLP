@@ -57,16 +57,27 @@ METAFEATURES = [
 
 # Number of top n-grams to analyze
 TOP_NGRAMS_COUNT = 25
+TOP_KEYWORDS_COUNT = 20
+TOP_LOCATIONS_COUNT = 20
+TOP_FEATURES_COUNT = 20
 
 # Logistic Regression default parameters
 LOGISTIC_REGRESSION_PARAMS = {
     'C': 1.0,  # Inverse of regularization strength
     'penalty': 'l2',  # Regularization penalty
-    'solver': 'liblinear',  # Algorithm to use in optimization
+    'solver': 'saga',  # Algorithm to use in optimization (supports parallel processing)
     'max_iter': 1000,  # Maximum number of iterations
     'random_state': RANDOM_STATE,  # Random state for reproducibility
     'n_jobs': -1,  # Use all available cores
     'class_weight': 'balanced'  # Adjust weights inversely proportional to class frequencies
+}
+
+TFIDF_PARAMS = {
+    'max_features': 5000,
+    'ngram_range': (1, 2),
+    'min_df': 2,
+    'max_df': 0.95,
+    'sublinear_tf': True
 }
 
 # Hyperparameter Search Space Constants
@@ -94,7 +105,7 @@ DEFAULT_N_JOBS = -1
 DEFAULT_CV_FOLDS = 5
 DEFAULT_INNER_CV_FOLDS = 3
 DEFAULT_OUTER_CV_FOLDS = 5
-DEFAULT_N_TRIALS = 20
+DEFAULT_N_TRIALS = 100
 DEFAULT_SCORING = 'f1'
 
 # Cross-validation strategies
@@ -128,7 +139,8 @@ DEFAULT_CLASSIFIER_PARAMS = {
     'C': 1.0,
     'max_iter': 1000,
     'n_jobs': DEFAULT_N_JOBS,
-    'random_state': DEFAULT_RANDOM_STATE
+    'random_state': DEFAULT_RANDOM_STATE,
+    'solver': 'saga'
 }
 
 # Feature importance constants

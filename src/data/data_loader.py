@@ -9,10 +9,14 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 
 from src.utils.paths import TRAIN_PATH, TEST_PATH
 
-def load_data():
+def load_data(train_path: str = TRAIN_PATH, test_path: str = TEST_PATH) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Loads training and test datasets.
     
+    Args:
+        train_path (str): Path to training dataset
+        test_path (str): Path to test dataset
+        
     Returns:
         tuple: (df_train, df_test) - tuple containing training and test datasets
     """
@@ -24,7 +28,8 @@ def load_data():
 def process_ids(df_train: pd.DataFrame, df_test: pd.DataFrame) -> tuple[pd.Series, 
                                                                         pd.Series, 
                                                                         pd.DataFrame, 
-                                                                        pd.DataFrame]:
+                                                                        pd.DataFrame
+                                                                        ]:
     """
     Extracts and removes ID columns from datasets.
     

@@ -10,7 +10,9 @@ from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Any
-from src.utils.constants import LOGISTIC_REGRESSION_PARAMS
+from src.utils.constants import ( LOGISTIC_REGRESSION_PARAMS, 
+                                  DEFAULT_RANDOM_STATE, 
+                                  TOP_FEATURES_COUNT )
 
 class FeatureImportanceAnalyzer:
     """
@@ -23,7 +25,7 @@ class FeatureImportanceAnalyzer:
         model: BaseEstimator | None = None,
         model_type: str = 'logistic_regression',
         model_params: dict[str, Any] | None = None,
-        random_state: int = 42
+        random_state: int = DEFAULT_RANDOM_STATE
     ):
         """
         Initialize the feature importance analyzer.
@@ -87,7 +89,7 @@ class FeatureImportanceAnalyzer:
         
         return self
         
-    def plot_summary(self, max_display: int = 20) -> None:
+    def plot_summary(self, max_display: int = TOP_FEATURES_COUNT) -> None:
         """
         Plot SHAP summary plot.
         
@@ -149,7 +151,7 @@ class FeatureImportanceAnalyzer:
         
         return importance_df
         
-    def plot_feature_importance(self, top_n: int = 20) -> None:
+    def plot_feature_importance(self, top_n: int = TOP_FEATURES_COUNT) -> None:
         """
         Plot feature importance scores.
         

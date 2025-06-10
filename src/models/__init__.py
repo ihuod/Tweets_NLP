@@ -14,7 +14,13 @@ from .model_trainer import ModelTrainer
 from .hyperparameter_tuning import (
     create_study,
     optuna_tune,
-    find_optimal_text_classifier_params
+    find_optimal_text_classifier_params,
+    optimize_hyperparameters
+)
+
+from .model_evaluation import (
+    cross_validate_model,
+    nested_cross_validate_model
 )
 
 __all__ = [
@@ -30,5 +36,10 @@ __all__ = [
     # hyperparameter_tuning
     'create_study',
     'optuna_tune',
-    'find_optimal_text_classifier_params'
+    'find_optimal_text_classifier_params',
+    'optimize_hyperparameters',
+    
+    # model_evaluation
+    'cross_validate_model',
+    'nested_cross_validate_model'
 ] 

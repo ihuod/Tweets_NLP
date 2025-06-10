@@ -4,15 +4,17 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from .data_processor import fill_missing_values
 from collections import defaultdict
-from src.utils.constants import STOPWORDS, IS_DISASTER, TOP_NGRAMS_COUNT
+from src.utils.constants import STOPWORDS, IS_DISASTER, TOP_NGRAMS_COUNT, TOP_KEYWORDS_COUNT, TOP_LOCATIONS_COUNT
 
-def analyze_missing_values(df_train: pd.DataFrame, df_test: pd.DataFrame, columns: list[str] | None = None) -> dict[str, float]:
+def analyze_missing_values_single_df(
+    df: pd.DataFrame,
+    columns: list[str] | None = None
+) -> dict[str, float]:
     """
-    Analyze missing values in specified columns of train and test datasets.
+    Analyze missing values in specified columns of a single dataset.
     
     Args:
-        df_train (pd.DataFrame): Training dataset
-        df_test (pd.DataFrame): Test dataset
+        df (pd.DataFrame): Dataset to analyze
         columns (list[str] | None): List of columns to analyze. If None, analyzes all columns.
         
     Returns:
@@ -20,18 +22,45 @@ def analyze_missing_values(df_train: pd.DataFrame, df_test: pd.DataFrame, column
     """
     # Use all columns if none specified
     if columns is None:
-        columns = list(set(df_train.columns) & set(df_test.columns))
+        columns = df.columns
     
-    datasets = {'train': df_train, 'test': df_test}
+    # Analyze missing values
+    return {
+        col: (df[col].isnull().sum() / len(df)) * 100 
+        for col in columns
+        if col in df.columns
+    }
+
+def analyze_missing_values(
+    datasets: dict[str, pd.DataFrame],
+    columns: list[str] | None = None
+) -> dict[str, float]:
+    """
+    Analyze missing values in specified columns across multiple datasets.
     
-    # Analyze missing values using functional approach
+    Args:
+        datasets (dict[str, pd.DataFrame]): Dictionary with dataset names as keys and DataFrames as values
+        columns (list[str] | None): List of columns to analyze. If None, analyzes common columns across all datasets.
+        
+    Returns:
+        dict[str, float]: Dictionary with missing value statistics in percentages
+        
+    Example:
+        >>> datasets = {
+        ...     'train': df_train,
+        ...     'test': df_test,
+        ...     'validation': df_val
+        ... }
+        >>> missing_stats = analyze_missing_values(datasets)
+    """
+    # Use common columns if none specified
+    if columns is None:
+        columns = list(set.intersection(*[set(df.columns) for df in datasets.values()]))
+    
+    # Convert datasets to Series and calculate missing values
     missing_stats = (
         pd.Series(datasets)
-        .apply(lambda df: {
-            col: (df[col].isnull().sum() / len(df)) * 100 
-            for col in columns
-            if col in df.columns  # Проверяем наличие колонки
-        })
+        .apply(lambda df: (df[columns].isnull().sum() / len(df) * 100).to_dict())
         .to_dict()
     )
     
@@ -42,17 +71,15 @@ def analyze_missing_values(df_train: pd.DataFrame, df_test: pd.DataFrame, column
         for col, percent in stats.items()
     }
 
-def analyze_unique_values(
-    df_train: pd.DataFrame, 
-    df_test: pd.DataFrame,
+def analyze_unique_values_single_df(
+    df: pd.DataFrame,
     columns: list[str] | None = None
 ) -> dict[str, int]:
     """
-    Analyze unique values in specified columns of datasets using functional approach.
+    Analyze unique values in specified columns of a single dataset.
     
     Args:
-        df_train (pd.DataFrame): Training dataset
-        df_test (pd.DataFrame): Test dataset
+        df (pd.DataFrame): Dataset to analyze
         columns (list[str] | None): List of columns to analyze.
             If None, uses ['keyword', 'location']
         
@@ -62,13 +89,43 @@ def analyze_unique_values(
     # Use default columns if none provided
     columns = columns or ['keyword', 'location']
     
-    # Create dictionary with dataset names and dataframes
-    datasets = {'train': df_train, 'test': df_test}
+    # Analyze unique values
+    return {
+        f'{col}_unique': df[col].nunique()
+        for col in columns
+        if col in df.columns
+    }
+
+def analyze_unique_values(
+    datasets: dict[str, pd.DataFrame],
+    columns: list[str] | None = None
+) -> dict[str, int]:
+    """
+    Analyze unique values in specified columns across multiple datasets.
     
-    # Analyze unique values using functional approach
+    Args:
+        datasets (dict[str, pd.DataFrame]): Dictionary with dataset names as keys and DataFrames as values
+        columns (list[str] | None): List of columns to analyze.
+            If None, uses ['keyword', 'location']
+        
+    Returns:
+        dict[str, int]: Dictionary with unique values statistics
+        
+    Example:
+        >>> datasets = {
+        ...     'train': df_train,
+        ...     'test': df_test,
+        ...     'validation': df_val
+        ... }
+        >>> unique_stats = analyze_unique_values(datasets)
+    """
+    # Use default columns if none provided
+    columns = columns or ['keyword', 'location']
+    
+    # Convert datasets to Series and calculate unique values
     unique_stats = (
         pd.Series(datasets)
-        .apply(lambda df: {f'{col}_unique': df[col].nunique() for col in columns})
+        .apply(lambda df: df[columns].nunique().to_dict())
         .to_dict()
     )
     
@@ -79,17 +136,105 @@ def analyze_unique_values(
         for col, count in stats.items()
     }
 
-def print_keyword_location_analysis_results(df_train: pd.DataFrame, df_test: pd.DataFrame) -> None:
+def plot_keyword_distribution(df: pd.DataFrame, n_top: int = TOP_KEYWORDS_COUNT) -> None:
+    """
+    Plot distribution of top keywords.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with keyword column
+        n_top (int): Number of top keywords to show
+    """
+    keyword_counts = df['keyword'].value_counts().head(n_top)
+    fig = px.bar(
+        x=keyword_counts.index,
+        y=keyword_counts.values,
+        title=f'Top {n_top} Keywords',
+        labels={'x': 'Keyword', 'y': 'Count'},
+        color=keyword_counts.values,
+        color_continuous_scale='Viridis'
+    )
+    fig.update_layout(
+        xaxis_tickangle=-45,
+        showlegend=False
+    )
+    fig.show()
+    return keyword_counts
+
+def plot_location_distribution(df: pd.DataFrame, n_top: int = TOP_LOCATIONS_COUNT) -> None:
+    """
+    Plot distribution of top locations.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with location column
+        n_top (int): Number of top locations to show
+    """
+    location_counts = df['location'].value_counts().head(n_top)
+    fig = px.bar(
+        x=location_counts.index,
+        y=location_counts.values,
+        title=f'Top {n_top} Locations',
+        labels={'x': 'Location', 'y': 'Count'},
+        color=location_counts.values,
+        color_continuous_scale='Viridis'
+    )
+    fig.update_layout(
+        xaxis_tickangle=-45,
+        showlegend=False
+    )
+    fig.show()
+    return location_counts
+
+def plot_target_distribution_by_keywords(df: pd.DataFrame) -> None:
+    """
+    Plot target distribution by keywords.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with keyword and target columns
+    """
+    df = df.copy()
+    df['target_mean'] = df.groupby('keyword')['target'].transform('mean')
+    df_sorted = df.sort_values(by='target_mean', ascending=False)
+
+    fig = px.histogram(
+        df_sorted, 
+        y='keyword',
+        color='target',
+        orientation='h',
+        height=3000,
+        width=800,
+        title='Target Distribution in Keywords',
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+
+    fig.update_layout(
+        yaxis=dict(autorange="reversed", tickfont=dict(size=10)),
+        legend=dict(x=1, y=1),
+        xaxis=dict(tickfont=dict(size=15))
+    )
+    fig.show()
+
+def print_keyword_location_analysis_results(
+    datasets: dict[str, pd.DataFrame],
+    train_dataset_name: str = 'train'
+) -> None:
     """
     Print comprehensive analysis of datasets with visualizations.
     
     Args:
-        df_train (pd.DataFrame): Training dataset
-        df_test (pd.DataFrame): Test dataset
+        datasets (dict[str, pd.DataFrame]): Dictionary with dataset names as keys and DataFrames as values
+        train_dataset_name (str): Name of the training dataset in the dictionary. Default is 'train'
+        
+    Example:
+        >>> datasets = {
+        ...     'train': df_train,
+        ...     'test': df_test,
+        ...     'validation': df_val
+        ... }
+        >>> print_keyword_location_analysis_results(datasets)
     """
     # Get initial statistics
-    missing_stats = analyze_missing_values(df_train, df_test)
-    unique_stats = analyze_unique_values(df_train, df_test)
+    missing_stats = analyze_missing_values(datasets)
+    unique_stats = analyze_unique_values(datasets)
     
     # Print initial statistics
     print("Missing Values Analysis:")
@@ -103,71 +248,22 @@ def print_keyword_location_analysis_results(df_train: pd.DataFrame, df_test: pd.
         print(f"{key}: {value}")
     
     # Fill missing values
-    df_train, df_test = fill_missing_values(df_train, df_test)
+    processed_datasets = fill_missing_values(datasets)
+    df_train = processed_datasets[train_dataset_name]
     
     # Create visualizations
-    # Top 20 keywords
-    keyword_counts = df_train['keyword'].value_counts().head(20)
-    fig_keywords = px.bar(
-        x=keyword_counts.index,
-        y=keyword_counts.values,
-        title='Top 20 Keywords in Training Set',
-        labels={'x': 'Keyword', 'y': 'Count'},
-        color=keyword_counts.values,
-        color_continuous_scale='Viridis'
-    )
-    fig_keywords.update_layout(
-        xaxis_tickangle=-45,
-        showlegend=False
-    )
-    fig_keywords.show()
-    
-    # Top 20 locations
-    location_counts = df_train['location'].value_counts().head(20)
-    fig_locations = px.bar(
-        x=location_counts.index,
-        y=location_counts.values,
-        title='Top 20 Locations in Training Set',
-        labels={'x': 'Location', 'y': 'Count'},
-        color=location_counts.values,
-        color_continuous_scale='Viridis'
-    )
-    fig_locations.update_layout(
-        xaxis_tickangle=-45,
-        showlegend=False
-    )
-    fig_locations.show()
+    keyword_counts = plot_keyword_distribution(df_train)
+    location_counts = plot_location_distribution(df_train)
     
     # Print final counts
     print("\nAfter filling missing values:")
-    print("\nKeyword counts (top 10):")
-    print(keyword_counts[:10])
-    print("\nLocation counts (top 10):")
-    print(location_counts[:10]) 
+    print(f"\nKeyword counts (top {TOP_KEYWORDS_COUNT}):")
+    print(keyword_counts[:TOP_KEYWORDS_COUNT])
+    print(f"\nLocation counts (top {TOP_LOCATIONS_COUNT}):")
+    print(location_counts[:TOP_LOCATIONS_COUNT]) 
 
-    # Target distribution in train dataset by keywords
-    df_train['target_mean'] = df_train.groupby('keyword')['target'].transform('mean')
-
-    df_sorted = df_train.sort_values(by='target_mean', ascending=False)
-
-    fig = px.histogram(df_sorted, 
-                    y = 'keyword',
-                    color = 'target',
-                    orientation = 'h',
-                    height = 3000,
-                    width = 800,
-                    title = 'Target Distribution in Keywords',
-                    color_discrete_sequence = px.colors.qualitative.Pastel)
-
-    fig.update_layout(
-        yaxis = dict(autorange = "reversed", tickfont = dict(size = 10)),
-        legend = dict(x = 1, y = 1),
-        xaxis = dict(tickfont = dict(size = 15))
-    )
-
-    df_train.drop(columns = ['target_mean'], inplace = True)
-
-    fig.show()
+    # Plot target distribution
+    plot_target_distribution_by_keywords(df_train)
 
 def generate_ngrams(text: str, n_gram: int = 1, stopwords: set | None = None) -> list[str]:
     """
@@ -207,19 +303,137 @@ def get_top_ngrams(tweets: pd.Series, n_gram: int = 1, stopwords: set | None = N
     sorted_ngrams = sorted(ngram_counts.items(), key=lambda x: x[1], reverse=True)
     return pd.DataFrame(sorted_ngrams[:n_top], columns=['ngram', 'count'])
 
+def create_ngram_bar_trace(
+    df: pd.DataFrame,
+    name: str,
+    color: str,
+    n_top: int = TOP_NGRAMS_COUNT
+) -> go.Bar:
+    """
+    Create a bar trace for n-grams visualization.
+    
+    Args:
+        df (pd.DataFrame): DataFrame with n-grams data
+        name (str): Name of the trace
+        color (str): Color for the bars
+        n_top (int): Number of top n-grams to show
+        
+    Returns:
+        go.Bar: Bar trace for plotly
+    """
+    return go.Bar(
+        y=df.head(n_top)['ngram'],
+        x=df.head(n_top)['count'],
+        name=name,
+        marker_color=color,
+        orientation='h'
+    )
+
+def create_ngrams_subplot(
+    disaster_ngrams_df: pd.DataFrame,
+    nondisaster_ngrams_df: pd.DataFrame,
+    ngram_type: str,
+    disaster_color: str = 'red',
+    nondisaster_color: str = 'green'
+) -> go.Figure:
+    """
+    Create a subplot comparing disaster and non-disaster n-grams.
+    
+    Args:
+        disaster_ngrams_df (pd.DataFrame): DataFrame with disaster n-grams
+        nondisaster_ngrams_df (pd.DataFrame): DataFrame with non-disaster n-grams
+        ngram_type (str): Type of n-grams ('unigrams', 'bigrams', 'trigrams')
+        disaster_color (str): Color for disaster n-grams
+        nondisaster_color (str): Color for non-disaster n-grams
+        
+    Returns:
+        go.Figure: Plotly figure with subplots
+    """
+    fig = make_subplots(
+        rows=1, 
+        cols=2,
+        subplot_titles=(
+            f'Top {TOP_NGRAMS_COUNT} {ngram_type} in Disaster Tweets',
+            f'Top {TOP_NGRAMS_COUNT} {ngram_type} in Non-disaster Tweets'
+        ),
+        horizontal_spacing=0.25
+    )
+
+    # Add traces
+    fig.add_trace(
+        create_ngram_bar_trace(disaster_ngrams_df, 'Disaster', disaster_color),
+        row=1, col=1
+    )
+    fig.add_trace(
+        create_ngram_bar_trace(nondisaster_ngrams_df, 'Non-disaster', nondisaster_color),
+        row=1, col=2
+    )
+
+    return fig
+
+def update_ngrams_layout(
+    fig: go.Figure,
+    ngram_type: str,
+    figsize: tuple[int, int] = (18, 50),
+    y_labelsize: int = 13,
+    title_fontsize: int = 15,
+    y_labelsize_trigrams: int = 11
+) -> None:
+    """
+    Update layout of n-grams plot.
+    
+    Args:
+        fig (go.Figure): Plotly figure to update
+        ngram_type (str): Type of n-grams ('unigrams', 'bigrams', 'trigrams')
+        figsize (tuple): Figure size
+        y_labelsize (int): Font size for y-axis labels
+        title_fontsize (int): Font size for titles
+        y_labelsize_trigrams (int): Font size for y-axis labels in trigrams plot
+    """
+    # Update layout
+    fig.update_layout(
+        height=figsize[1] * 10,
+        width=figsize[0] * 50,
+        showlegend=False,
+        title_font_size=title_fontsize,
+        font=dict(size=y_labelsize_trigrams if ngram_type in ['trigrams', 'bigrams'] else y_labelsize),
+        margin=dict(l=20, r=20, t=40, b=20),
+        bargap=0.2,
+        bargroupgap=0.1
+    )
+
+    # Update axes
+    for col in [1, 2]:
+        fig.update_xaxes(
+            title_text='Count',
+            row=1,
+            col=col,
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='LightGray'
+        )
+        fig.update_yaxes(
+            title_text='',
+            row=1,
+            col=col,
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='LightGray'
+        )
+
 def plot_ngrams_comparison(
-        disaster_ngrams_df: pd.DataFrame,
-        nondisaster_ngrams_df: pd.DataFrame,
-        ngram_type: str, 
-        n_cols: int = 2, 
-        figsize: tuple[int, int] = (18, 50), 
-        dpi: int = 100, 
-        disaster_color: str = 'red', 
-        nondisaster_color: str = 'green', 
-        x_labelsize: int = 13, 
-        y_labelsize: int = 13, 
-        title_fontsize: int = 15, 
-        y_labelsize_trigrams: int = 11
+    disaster_ngrams_df: pd.DataFrame,
+    nondisaster_ngrams_df: pd.DataFrame,
+    ngram_type: str, 
+    n_cols: int = 2, 
+    figsize: tuple[int, int] = (18, 50), 
+    dpi: int = 100, 
+    disaster_color: str = 'red', 
+    nondisaster_color: str = 'green', 
+    x_labelsize: int = 13, 
+    y_labelsize: int = 13, 
+    title_fontsize: int = 15, 
+    y_labelsize_trigrams: int = 11
 ) -> None:
     """
     Plot comparison of n-grams between disaster and non-disaster tweets using Plotly.
@@ -237,91 +451,26 @@ def plot_ngrams_comparison(
         y_labelsize (int): Font size for y-axis labels
         title_fontsize (int): Font size for titles
         y_labelsize_trigrams (int): Font size for y-axis labels in trigrams plot
-        
-    Returns:
-        None: Displays the plot
     """
-    # Create subplot figure with proper spacing
-    fig = make_subplots(
-        rows=1, 
-        cols=2,
-        subplot_titles=(
-            f'Top {TOP_NGRAMS_COUNT} {ngram_type} in Disaster Tweets',
-            f'Top {TOP_NGRAMS_COUNT} {ngram_type} in Non-disaster Tweets'
-        ),
-        horizontal_spacing=0.25
+    # Create subplot
+    fig = create_ngrams_subplot(
+        disaster_ngrams_df,
+        nondisaster_ngrams_df,
+        ngram_type,
+        disaster_color,
+        nondisaster_color
     )
-
-    # Add disaster n-grams bar chart
-    fig.add_trace(
-        go.Bar(
-            y=disaster_ngrams_df.head(TOP_NGRAMS_COUNT)['ngram'],
-            x=disaster_ngrams_df.head(TOP_NGRAMS_COUNT)['count'],
-            name='Disaster',
-            marker_color=disaster_color,
-            orientation='h'
-        ),
-        row=1, col=1
+    
+    # Update layout
+    update_ngrams_layout(
+        fig,
+        ngram_type,
+        figsize,
+        y_labelsize,
+        title_fontsize,
+        y_labelsize_trigrams
     )
-
-    # Add non-disaster n-grams bar chart
-    fig.add_trace(
-        go.Bar(
-            y=nondisaster_ngrams_df.head(TOP_NGRAMS_COUNT)['ngram'],
-            x=nondisaster_ngrams_df.head(TOP_NGRAMS_COUNT)['count'],
-            name='Non-disaster',
-            marker_color=nondisaster_color,
-            orientation='h'
-        ),
-        row=1, col=2
-    )
-
-    # Update layout with proper margins and spacing
-    fig.update_layout(
-        height=figsize[1] * 10,
-        width=figsize[0] * 50,
-        showlegend=False,
-        title_font_size=title_fontsize,
-        font=dict(size=y_labelsize_trigrams if (ngram_type == 'trigrams' or ngram_type == 'bigrams') else y_labelsize),
-        margin=dict(l=20, r=20, t=40, b=20),
-        bargap=0.2,
-        bargroupgap=0.1
-    )
-
-    # Update axes with proper spacing and labels
-    fig.update_xaxes(
-        title_text='Count',
-        row=1,
-        col=1,
-        showgrid=True,
-        gridwidth=1,
-        gridcolor='LightGray'
-    )
-    fig.update_xaxes(
-        title_text='Count',
-        row=1,
-        col=2,
-        showgrid=True,
-        gridwidth=1,
-        gridcolor='LightGray'
-    )
-    fig.update_yaxes(
-        title_text='',
-        row=1,
-        col=1,
-        showgrid=True,
-        gridwidth=1,
-        gridcolor='LightGray'
-    )
-    fig.update_yaxes(
-        title_text='',
-        row=1,
-        col=2,
-        showgrid=True,
-        gridwidth=1,
-        gridcolor='LightGray'
-    )
-
+    
     # Show the plot
     fig.show()
 
@@ -330,7 +479,8 @@ def analyze_ngrams(df_train: pd.DataFrame) -> tuple[pd.DataFrame,
                                                     pd.DataFrame, 
                                                     pd.DataFrame, 
                                                     pd.DataFrame, 
-                                                    pd.DataFrame]:
+                                                    pd.DataFrame
+                                                    ]:
     """
     Analyze n-grams in disaster and non-disaster tweets.
     

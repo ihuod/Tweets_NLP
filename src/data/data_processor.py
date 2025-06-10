@@ -17,23 +17,29 @@ def preprocess_dataframe(df: pd.DataFrame, text_column: str) -> pd.DataFrame:
     return df
 
 def fill_missing_values(
-    df_train: pd.DataFrame, 
-    df_test: pd.DataFrame,
+    datasets: dict[str, pd.DataFrame],
     columns: list[str] | None = None,
     default_prefix: str = 'no_'
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """
-    Fill missing values in specified columns using functional pandas approach.
+    Fill missing values in specified columns across multiple datasets.
     
     Args:
-        df_train (pd.DataFrame): Training dataset
-        df_test (pd.DataFrame): Test dataset
+        datasets (dict[str, pd.DataFrame]): Dictionary with dataset names as keys and DataFrames as values
         columns (list[str] | None): List of columns to fill missing values in.
             If None, uses ['keyword', 'location']
         default_prefix (str): Prefix for default values. Default is 'no_'
         
     Returns:
-        tuple[pd.DataFrame, pd.DataFrame]: Processed datasets with filled missing values
+        dict[str, pd.DataFrame]: Dictionary with processed datasets with filled missing values
+        
+    Example:
+        >>> datasets = {
+        ...     'train': df_train,
+        ...     'test': df_test,
+        ...     'validation': df_val
+        ... }
+        >>> processed_datasets = fill_missing_values(datasets)
     """
     # Use default columns if none provided
     columns = columns or ['keyword', 'location']
@@ -41,15 +47,10 @@ def fill_missing_values(
     # Create dictionary for filling missing values
     fill_vals = {col: f'{default_prefix}{col}' for col in columns}
     
-    # Fill missing values in specified columns
-    df_train, df_test = (
-        pd.Series([df_train, df_test])
-        .apply(lambda df: df.fillna(fill_vals))
-    )
-        
-    return df_train, df_test
+    # Fill missing values in specified columns for each dataset using pandas Series
+    return pd.Series(datasets).apply(lambda df: df.fillna(fill_vals)).to_dict()
 
-def remove_duplicates(df: pd.DataFrame, subset: list[str] = None) -> tuple[pd.DataFrame, int]:
+def remove_duplicates(df: pd.DataFrame, subset: list[str] | None = None) -> tuple[pd.DataFrame, int]:
     """
     Remove duplicate rows from dataframe.
     
