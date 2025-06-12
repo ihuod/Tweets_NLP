@@ -16,7 +16,6 @@ from .text_classifier import (
 from .hyperparameter_tuning import (
     create_study,
     optuna_tune,
-    find_optimal_text_classifier_params,
     optimize_hyperparameters
 )
 
@@ -35,10 +34,9 @@ __all__ = [
     # hyperparameter_tuning
     'create_study',
     'optuna_tune',
-    'find_optimal_text_classifier_params',
     'optimize_hyperparameters',
 
     # model_evaluation
     'cross_validate_model',
-    'nested_cross_validate_model'
+    'nested_cross_validate_model',
 ] 

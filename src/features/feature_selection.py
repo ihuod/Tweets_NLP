@@ -7,12 +7,12 @@ import pandas as pd
 import shap
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 from typing import Any
-from src.utils.constants import ( LOGISTIC_REGRESSION_PARAMS, 
-                                  DEFAULT_RANDOM_STATE, 
-                                  TOP_FEATURES_COUNT )
+from src.utils.constants import (LOGISTIC_REGRESSION_PARAMS, 
+                                 DEFAULT_RANDOM_STATE, 
+                                 TOP_FEATURES_COUNT 
+                                )
 
 class FeatureImportanceAnalyzer:
     """
@@ -153,22 +153,21 @@ class FeatureImportanceAnalyzer:
         
     def plot_feature_importance(self, top_n: int = TOP_FEATURES_COUNT) -> None:
         """
-        Plot feature importance scores.
+        Plot feature importance scores using Plotly Express.
         
         Args:
             top_n (int): Number of top features to display
         """
         importance_df = self.get_feature_importance()
-        
-        # Plot top N features
-        plt.figure(figsize=(10, 6))
-        sns.barplot(
-            data=importance_df.head(top_n),
+        fig = px.bar(
+            importance_df.head(top_n),
             x='importance',
-            y='feature'
+            y='feature',
+            orientation='h',
+            title=f'Top {top_n} Feature Importance',
+            labels={'importance': 'Mean |SHAP value|', 'feature': 'Feature'},
+            color='importance',
+            color_continuous_scale='Viridis'
         )
-        plt.title(f'Top {top_n} Feature Importance')
-        plt.xlabel('Mean |SHAP value|')
-        plt.ylabel('Feature')
-        plt.tight_layout()
-        plt.show()
+        fig.update_layout(yaxis={'categoryorder':'total ascending'})
+        fig.show()

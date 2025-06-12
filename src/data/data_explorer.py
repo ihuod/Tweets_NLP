@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -25,11 +26,10 @@ def analyze_missing_values_single_df(
         columns = df.columns
     
     # Analyze missing values
-    return {
-        col: (df[col].isnull().sum() / len(df)) * 100 
-        for col in columns
-        if col in df.columns
-    }
+    return df[columns].apply(
+        lambda x: (x.isna().sum() / len(x)) * 100,
+        raw=True
+    ).to_dict()
 
 def analyze_missing_values(
     datasets: dict[str, pd.DataFrame],
@@ -87,14 +87,14 @@ def analyze_unique_values_single_df(
         dict[str, int]: Dictionary with unique values statistics
     """
     # Use default columns if none provided
-    columns = columns or ['keyword', 'location']
+    unique_counts = df[columns].apply(
+        lambda x: len(np.unique(x)),
+        raw=True
+    )
     
-    # Analyze unique values
-    return {
-        f'{col}_unique': df[col].nunique()
-        for col in columns
-        if col in df.columns
-    }
+    return {f'{col}_unique': count
+            for col, count in unique_counts.items()
+            if col in df.columns}
 
 def analyze_unique_values(
     datasets: dict[str, pd.DataFrame],
